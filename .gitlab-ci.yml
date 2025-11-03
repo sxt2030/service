@@ -6,7 +6,7 @@ stages:
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
-  DOCKER_IMAGE: "maxpack2030/skillbox-app"
+  DOCKER_IMAGE: "maxpack2030/skillbox-app"  # ← Укажите свой username
   ANSIBLE_HOST_KEY_CHECKING: "False"
 
 # --- Stage 1: Build image ---
@@ -15,10 +15,9 @@ build_image:
   image: docker:24.0.2
   services:
     - docker:dind
-  before_script:
+  script:
     - echo "🔧 Building Docker image..."
     - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
-  script:
     - echo "Building: $DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./skillbox-app
     - docker push "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
@@ -33,10 +32,9 @@ run_tests:
   image: docker:24.0.2
   services:
     - docker:dind
-  before_script:
-    - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
   script:
     - echo "🧪 Running tests..."
+    - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
     - docker pull "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
     - docker run --rm "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./run-tests.sh
   only:
@@ -58,10 +56,10 @@ deploy_to_uat:
     - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "🚀 Deploying via Ansible..."
-    - ansible-playbook infra/ansible/playbooks/deploy_docker.yml \
-        -i infra/ansible/inventory/hosts.yml \
-        --private-key private_key.pem \
-        -u ubuntu \
+    - ansible-playbook infra/ansible/playbooks/deploy_docker.yml
+        -i infra/ansible/inventory/hosts.yml
+        --private-key private_key.pem
+        -u ubuntu
         --extra-vars "service_name=skillbox-app image_tag=$CI_COMMIT_REF_NAME docker_image=$DOCKER_IMAGE"
   only:
     - uat
@@ -69,5 +67,3 @@ deploy_to_uat:
     name: uat
   needs:
     - run_tests
-  tags:
-    - docker
