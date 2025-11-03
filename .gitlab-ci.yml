@@ -17,7 +17,7 @@ build_image:
     - docker:dind
   script:
     - echo "🔧 Building Docker image..."
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./skillbox-app
     - docker push "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
   only:
