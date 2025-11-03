@@ -1,0 +1,26 @@
+---
+- name: Deploy application from CI/CD
+  hosts: app_servers
+  become: true
+  vars:
+    service_name: skillbox-app
+    image_name: "{{ lookup('env', 'DOCKER_IMAGE') }}"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') }}"
+  tasks:
+    - name: Pull latest Docker image
+      docker_image:
+        name: "{{ image_name }}"
+        tag: "{{ image_tag }}"
+        source: pull
+        
+    - name: Stop service
+      systemd:
+        name: "{{ service_name }}"
+        state: stopped
+      ignore_errors: yes
+      
+    - name: Start service with new image
+      systemd:
+        name: "{{ service_name }}"
+        state: started
+        enabled: yes
