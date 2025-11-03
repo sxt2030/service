@@ -1,0 +1,67 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_IMAGE: "$CI_REGISTRY_IMAGE/skillbox-app"
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+
+# --- Stage 1: Build image ---
+build_image:
+  stage: build
+  image: docker:24.0.2
+  services:
+    - docker:dind
+  script:
+    - echo "🔧 Building Docker image..."
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./skillbox-app
+    - docker push "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
+  only:
+    - uat
+  tags:
+    - docker
+
+# --- Stage 2: Run tests ---
+run_tests:
+  stage: test
+  image: docker:24.0.2
+  services:
+    - docker:dind
+  script:
+    - echo "🧪 Running tests..."
+    - docker run --rm "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./run-tests.sh
+  only:
+    - uat
+  needs:
+    - build_image
+  tags:
+    - docker
+
+# --- Stage 3: Deploy via Ansible ---
+deploy_to_uat:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh ansible
+    - echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
+    - chmod 600 private_key.pem
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - echo "🚀 Deploying via Ansible..."
+    - ansible-playbook infra/ansible/playbooks/deploy_docker.yml \
+        -i infra/ansible/inventory/hosts.yml \
+        --private-key private_key.pem \
+        -u ubuntu \
+        --extra-vars "service_name=skillbox-app image_tag=$CI_COMMIT_REF_NAME"
+  only:
+    - uat
+  environment:
+    name: uat
+  needs:
+    - run_tests
+
