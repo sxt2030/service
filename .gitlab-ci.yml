@@ -54,7 +54,11 @@ deploy_to_uat:
     - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying via Ansible..."
-    - ansible-playbook skillbox-app/ansible/deploy_docker.yml -i skillbox-app/ansible/inventory/hosts.yml --private-key private_key.pem -u ubuntu --extra-vars "service_name=skillbox-app image_tag=$CI_COMMIT_REF_NAME docker_image=$DOCKER_IMAGE"
+    - ansible-playbook playbooks/deploy_service.yml
+        -i "$APP_SERVER_IP,"
+        -u ubuntu
+        --private-key private_key.pem
+        --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_REF_NAME"
   only:
     - uat
   environment:

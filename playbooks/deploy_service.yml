@@ -1,13 +1,12 @@
 ---
-- name: Deploy template Docker-based service
-  hosts: app_servers
+- name: Deploy Docker-based service
+  hosts: all
   become: true
-
   vars:
-    service_name: skillbox-app
-    image_name: maxpack2030/skillbox-app
-    image_tag: latest
-
+    service_name: "{{ service_name | default('skillbox-app') }}"
+    image_name: "{{ docker_image | default('maxpack2030/skillbox-app') }}"
+    image_tag: "{{ image_tag | default('latest') }}"
+  
   tasks:
     - name: Ensure Docker is installed
       apt:
@@ -22,11 +21,11 @@
         mode: '0644'
 
     - name: Reload systemd daemon
-      command: systemctl daemon-reload
+      systemd:
+        daemon_reload: yes
 
     - name: Enable and restart service
       systemd:
         name: "{{ service_name }}"
         enabled: yes
         state: restarted
-
