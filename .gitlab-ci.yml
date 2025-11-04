@@ -6,7 +6,7 @@ stages:
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
-  DOCKER_IMAGE: "maxpack2030/skillbox-app"  # ← Укажите свой username
+  DOCKER_IMAGE: "maxpack2030/skillbox-app"
   ANSIBLE_HOST_KEY_CHECKING: "False"
 
 # --- Stage 1: Build image ---
@@ -16,7 +16,7 @@ build_image:
   services:
     - docker:dind
   script:
-    - echo "🔧 Building Docker image..."
+    - echo "Building Docker image..."
     - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
     - echo "Building: $DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./skillbox-app
