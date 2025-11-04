@@ -1,6 +1,6 @@
 stages:
-  - build
   - test
+  - build
   - deploy
 
 variables:
@@ -9,7 +9,22 @@ variables:
   DOCKER_IMAGE: "maxpack2030/skillbox-app"
   ANSIBLE_HOST_KEY_CHECKING: "False"
 
-# --- Stage 1: Build image ---
+# --- Stage 1: Run tests ---
+run_tests:
+  stage: test
+  image: docker:24.0.2
+  services:
+    - docker:dind
+  script:
+    - echo "Running tests..."
+    - docker build --target test -t test-image ./skillbox-app
+    - docker run --rm test-image
+  only:
+    - uat
+  tags:
+    - docker
+
+# --- Stage 2: Build image ---
 build_image:
   stage: build
   image: docker:24.0.2
@@ -18,29 +33,12 @@ build_image:
   script:
     - echo "Building Docker image..."
     - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
-    - echo "Building  $DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./skillbox-app
     - docker push "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
   only:
     - uat
-  tags:
-    - docker
-
-# --- Stage 2: Run tests ---
-run_tests:
-  stage: test
-  image: docker:24.0.2
-  services:
-    - docker:dind
-  script:
-    - echo "🧪 Running tests..."
-    - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
-    - docker pull "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
-    - docker run --rm "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" skillbox-app/run-tests.sh
-  only:
-    - uat
   needs:
-    - build_image
+    - run_tests
   tags:
     - docker
 
@@ -55,11 +53,11 @@ deploy_to_uat:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
   script:
-    - echo "🚀 Deploying via Ansible..."
-    - ansible-playbook infra/ansible/playbooks/deploy_docker.yml -i infra/ansible/inventory/hosts.yml --private-key private_key.pem -u ubuntu --extra-vars "service_name=skillbox-app image_tag=$CI_COMMIT_REF_NAME docker_image=$DOCKER_IMAGE"
+    - echo "Deploying via Ansible..."
+    - ansible-playbook skillbox-app/ansible/deploy_docker.yml -i skillbox-app/ansible/inventory/hosts.yml --private-key private_key.pem -u ubuntu --extra-vars "service_name=skillbox-app image_tag=$CI_COMMIT_REF_NAME docker_image=$DOCKER_IMAGE"
   only:
     - uat
   environment:
     name: uat
   needs:
-    - run_tests
+    - build_image
