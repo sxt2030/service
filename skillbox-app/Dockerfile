@@ -1,4 +1,5 @@
 FROM golang:1.16.6-alpine3.14 as builder
+RUN apk add --no-cache gcc musl-dev
 RUN mkdir /build
 WORKDIR /build
 COPY . /build/
@@ -7,6 +8,7 @@ RUN go mod download
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -o app cmd/server/app.go
 
 FROM golang:1.16.6-alpine3.14 as test
+RUN apk add --no-cache gcc musl-dev
 WORKDIR /build
 COPY . /build/
 RUN go mod download
