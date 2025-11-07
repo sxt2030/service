@@ -5,21 +5,25 @@ stages:
 
 variables:
   DOCKER_IMAGE: "maxpack2030/skillbox-app"
+  ANSIBLE_HOST_KEY_CHECKING: "False"
 
-# === 1 BUILD DOCKER IMAGE ===
+# === 1. BUILD DOCKER IMAGE ===
 build_image:
   stage: build
   image: docker:24.0.2
   services:
     - docker:dind
   script:
+    - echo "Building Docker image..."
     - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_SHA" ./skillbox-app
     - docker push "$DOCKER_IMAGE:$CI_COMMIT_SHA"
   only:
     - uat
+  tags:
+    - docker
 
-# === 2 DEPLOY TO STAGING ===
+# === 2. DEPLOY TO STAGING ===
 deploy_to_staging:
   stage: deploy_staging
   image: alpine:latest
@@ -43,8 +47,10 @@ deploy_to_staging:
     reports:
       dotenv: deploy.env
     expire_in: 3 days
+  tags:
+    - docker
 
-# === 3 DEPLOY TO PRODUCTION ===
+# === 3. DEPLOY TO PRODUCTION ===
 deploy_to_prod:
   stage: deploy_production
   image: alpine:latest
@@ -55,15 +61,22 @@ deploy_to_prod:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $APP_SERVER_PROD_IP >> ~/.ssh/known_hosts
   script:
-    - echo "Deploying to PRODUCTION using image tag: $DEPLOYED_IMAGE_TAG"
+    - echo "Deploying to PRODUCTION using same image tag: $DEPLOYED_IMAGE_TAG"
     - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_PROD_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
   only:
     - main
+  rules:
+    # Автозапуск при merge из UAT → MAIN
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "uat" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+      when: on_success
+    # Ручной запуск тоже разрешён
+    - when: manual
   environment:
     name: production
-  when: manual
   needs:
     - job: deploy_to_staging
       artifacts: true
       optional: true
+  tags:
+    - docker
 
