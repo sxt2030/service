@@ -48,7 +48,7 @@ build_image:
   tags:
     - docker
 
-# --- Stage 3: Deploy to staging (UAT) ---
+# --- Stage 3: Deploy to UAT ---
 deploy_to_uat:
   stage: deploy
   image: alpine:latest
@@ -60,12 +60,7 @@ deploy_to_uat:
     - ssh-keyscan -H "$APP_SERVER_IP" >> ~/.ssh/known_hosts
   script:
     - echo "Deploying via Ansible to UAT..."
-    - >
-      ansible-playbook playbooks/deploy_service.yml
-      -i "${APP_SERVER_IP},"
-      -u ubuntu
-      --private-key private_key.pem
-      --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
+    - ansible-playbook playbooks/deploy_service.yml -i "${APP_SERVER_IP}," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
   artifacts:
     reports:
       dotenv: image_tag.txt
@@ -89,12 +84,7 @@ deploy_to_prod:
   script:
     - echo "Deploying via Ansible to PROD..."
     - echo "Using image tag: $IMAGE_TAG"
-    - >
-      ansible-playbook playbooks/deploy_service.yml
-      -i "${PROD_SERVER_IP},"
-      -u ubuntu
-      --private-key private_key.pem
-      --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
+    - ansible-playbook playbooks/deploy_service.yml -i "${PROD_SERVER_IP}," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
   only:
     - main
   environment:
