@@ -5,10 +5,12 @@ Requires=docker.service
 
 [Service]
 Restart=always
+RestartSec=5s
+TimeoutStopSec=30s
 ExecStartPre=-/usr/bin/docker stop {{ service_name }}
 ExecStartPre=-/usr/bin/docker rm {{ service_name }}
 ExecStartPre=/usr/bin/docker pull {{ image_name }}:{{ image_tag }}
-ExecStart=/usr/bin/docker run --rm --name {{ service_name }} -p 80:8080 {{ image_name }}:{{ image_tag }}
+ExecStart=/usr/bin/docker run --name {{ service_name }} -p 80:8080 {{ image_name }}:{{ image_tag }}
 ExecStop=/usr/bin/docker stop {{ service_name }}
 
 [Install]

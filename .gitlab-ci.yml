@@ -35,6 +35,14 @@ build_image:
     - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME" ./skillbox-app
     - docker push "$DOCKER_IMAGE:$CI_COMMIT_REF_NAME"
+  artifacts:
+    paths:
+      - image_tag.txt
+    reports:
+      dotenv: image_tag.txt
+  after_script:
+    # сохраняем тег образа как переменную для следующего job'а
+    - echo "IMAGE_TAG=$CI_COMMIT_REF_NAME" > image_tag.txt
   only:
     - uat
   needs:
@@ -42,7 +50,7 @@ build_image:
   tags:
     - docker
 
-# --- Stage 3: Deploy via Ansible ---
+# --- Stage 3: Deploy to staging (UAT) ---
 deploy_to_uat:
   stage: deploy
   image: alpine:latest
@@ -53,15 +61,46 @@ deploy_to_uat:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
   script:
-    - echo "Deploying via Ansible..."
+    - echo "Deploying via Ansible to UAT..."
     - ansible-playbook playbooks/deploy_service.yml
         -i "$APP_SERVER_IP,"
         -u ubuntu
         --private-key private_key.pem
-        --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_REF_NAME"
+        --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$IMAGE_TAG"
+  artifacts:
+    reports:
+      dotenv: image_tag.txt
   only:
     - uat
   environment:
     name: uat
   needs:
     - build_image
+
+# --- Stage 4: Deploy to Production ---
+deploy_to_prod:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh ansible
+    - echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
+    - chmod 600 private_key.pem
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - echo "Deploying via Ansible to PROD..."
+    - echo "Using image tag: $IMAGE_TAG"
+    - ansible-playbook playbooks/deploy_service.yml
+        -i "$PROD_SERVER_IP,"
+        -u ubuntu
+        --private-key private_key.pem
+        --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$IMAGE_TAG"
+  only:
+    - main
+  environment:
+    name: production
+  when: manual
+  needs:
+    - job: deploy_to_uat
+      artifacts: true
+
