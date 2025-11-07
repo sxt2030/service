@@ -61,11 +61,7 @@ deploy_to_staging:
     - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying to STAGING..."
-    - ansible-playbook playbooks/deploy_service.yml \
-        -i "$APP_SERVER_IP," \
-        -u ubuntu \
-        --private-key private_key.pem \
-        --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_SHA"
+    - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_SHA"
   only:
     - uat
   environment:
@@ -91,11 +87,7 @@ deploy_to_prod:
     - ssh-keyscan -H $APP_SERVER_PROD_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying to PRODUCTION with same image as STAGING..."
-    - ansible-playbook playbooks/deploy_service.yml \
-        -i "$APP_SERVER_PROD_IP," \
-        -u ubuntu \
-        --private-key private_key.pem \
-        --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
+    - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_PROD_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
   only:
     - main
   needs:
