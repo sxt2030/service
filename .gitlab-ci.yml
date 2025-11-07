@@ -83,7 +83,7 @@ deploy_to_prod:
     - ssh-keyscan -H "$PROD_SERVER_IP" >> ~/.ssh/known_hosts
   script:
     - echo "Deploying via Ansible to PROD..."
-    - echo "Using image tag: $IMAGE_TAG"
+    - echo "Using image tag $IMAGE_TAG"
     - ansible-playbook playbooks/deploy_service.yml -i "${PROD_SERVER_IP}," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
   only:
     - main
