@@ -57,10 +57,15 @@ deploy_to_uat:
     - echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
     - chmod 600 private_key.pem
     - mkdir -p ~/.ssh
-    - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
+    - ssh-keyscan -H "$APP_SERVER_IP" >> ~/.ssh/known_hosts
   script:
     - echo "Deploying via Ansible to UAT..."
-    - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$IMAGE_TAG"
+    - >
+      ansible-playbook playbooks/deploy_service.yml
+      -i "${APP_SERVER_IP},"
+      -u ubuntu
+      --private-key private_key.pem
+      --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
   artifacts:
     reports:
       dotenv: image_tag.txt
@@ -80,11 +85,16 @@ deploy_to_prod:
     - echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
     - chmod 600 private_key.pem
     - mkdir -p ~/.ssh
-    - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
+    - ssh-keyscan -H "$PROD_SERVER_IP" >> ~/.ssh/known_hosts
   script:
     - echo "Deploying via Ansible to PROD..."
     - echo "Using image tag: $IMAGE_TAG"
-    - ansible-playbook playbooks/deploy_service.yml -i "$PROD_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$IMAGE_TAG"
+    - >
+      ansible-playbook playbooks/deploy_service.yml
+      -i "${PROD_SERVER_IP},"
+      -u ubuntu
+      --private-key private_key.pem
+      --extra-vars "service_name=skillbox-app docker_image=${DOCKER_IMAGE} image_tag=${IMAGE_TAG}"
   only:
     - main
   environment:
