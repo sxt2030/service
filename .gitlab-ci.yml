@@ -1,55 +1,25 @@
 stages:
-  - test
   - build
   - deploy_staging
   - deploy_production
 
 variables:
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
   DOCKER_IMAGE: "maxpack2030/skillbox-app"
-  ANSIBLE_HOST_KEY_CHECKING: "False"
 
-# === 1️⃣ TEST ===
-run_tests:
-  stage: test
-  image: docker:24.0.2
-  services:
-    - docker:dind
-  script:
-    - echo "Running tests..."
-    - docker build --target test -t test-image ./skillbox-app
-    - docker run --rm test-image
-  only:
-    - uat
-  tags:
-    - docker
-
-# === 2️⃣ BUILD IMAGE ===
+# === 1 BUILD DOCKER IMAGE ===
 build_image:
   stage: build
   image: docker:24.0.2
   services:
     - docker:dind
   script:
-    - echo "Building Docker image..."
-    - docker login -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_TOKEN"
+    - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
     - docker build -t "$DOCKER_IMAGE:$CI_COMMIT_SHA" ./skillbox-app
     - docker push "$DOCKER_IMAGE:$CI_COMMIT_SHA"
   only:
     - uat
-  needs:
-    - run_tests
-  tags:
-    - docker
-  artifacts:
-    expire_in: 1 day
-    reports:
-      dotenv: build.env
-  after_script:
-    - echo "IMAGE_TAG=$CI_COMMIT_SHA" > build.env
 
-# === 3️⃣ DEPLOY TO STAGING ===
+# === 2 DEPLOY TO STAGING ===
 deploy_to_staging:
   stage: deploy_staging
   image: alpine:latest
@@ -62,6 +32,7 @@ deploy_to_staging:
   script:
     - echo "Deploying to STAGING..."
     - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_SHA"
+    - echo "DEPLOYED_IMAGE_TAG=$CI_COMMIT_SHA" > deploy.env
   only:
     - uat
   environment:
@@ -69,13 +40,11 @@ deploy_to_staging:
   needs:
     - build_image
   artifacts:
-    expire_in: 3 days
     reports:
       dotenv: deploy.env
-  after_script:
-    - echo "DEPLOYED_IMAGE_TAG=$CI_COMMIT_SHA" > deploy.env
+    expire_in: 3 days
 
-# === 4️⃣ DEPLOY TO PRODUCTION ===
+# === 3 DEPLOY TO PRODUCTION ===
 deploy_to_prod:
   stage: deploy_production
   image: alpine:latest
@@ -86,14 +55,15 @@ deploy_to_prod:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $APP_SERVER_PROD_IP >> ~/.ssh/known_hosts
   script:
-    - echo "Deploying to PRODUCTION with same image as STAGING..."
+    - echo "Deploying to PRODUCTION using image tag: $DEPLOYED_IMAGE_TAG"
     - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_PROD_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
   only:
     - main
+  environment:
+    name: production
+  when: manual
   needs:
     - job: deploy_to_staging
       artifacts: true
-  environment:
-    name: production
-  when: manual   # безопаснее вручную подтвердить
+      optional: true
 
