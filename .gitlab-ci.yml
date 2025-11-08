@@ -74,8 +74,8 @@ deploy_to_prod:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
   script:
-    - echo "Deploying to PRODUCTION..."
-    # Используем тег uat вместо переменной из артефакта
+    - echo "Deploying to PRODUCTION using image from UAT..."
+    # Используем фиксированный тег uat - образ уже собран и протестирован
     - ansible-playbook playbooks/deploy_service.yml -i "$PROD_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=uat"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
