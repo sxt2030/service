@@ -81,11 +81,11 @@ deploy_to_prod:
     - echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
     - chmod 600 private_key.pem
     - mkdir -p ~/.ssh
-    - if [ -z "$APP_SERVER_PROD_IP" ]; then echo "❌ APP_SERVER_PROD_IP not set"; exit 1; fi
-    - ssh-keyscan -H $APP_SERVER_PROD_IP >> ~/.ssh/known_hosts
+    - if [ -z "$PROD_SERVER_IP" ]; then echo "❌ PROD_SERVER_IP not set"; exit 1; fi
+    - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying to PRODUCTION using same image tag - $DEPLOYED_IMAGE_TAG"
-    - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_PROD_IP" -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
+    - ansible-playbook playbooks/deploy_service.yml -i "$PROD_SERVER_IP" -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
