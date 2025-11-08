@@ -51,7 +51,9 @@ deploy_to_staging:
     - ssh-keyscan -H $APP_SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying to STAGING..."
-    - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_SHA"
+    - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_REF_NAME"
+    # Создаем файл с переменными для production
+    - echo "DEPLOYED_IMAGE_TAG=$CI_COMMIT_REF_NAME" > deploy.env
   artifacts:
     expire_in: 3 days
     reports:
@@ -72,11 +74,11 @@ deploy_to_prod:
     - mkdir -p ~/.ssh
     - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
   script:
-    - echo "Deploying to PRODUCTION using the same image as STAGING..."
-    - ansible-playbook playbooks/deploy_service.yml -i "$PROD_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$DEPLOYED_IMAGE_TAG"
+    - echo "Deploying to PRODUCTION..."
+    # Используем тег uat вместо переменной из артефакта
+    - ansible-playbook playbooks/deploy_service.yml -i "$PROD_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=uat"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   when: manual
   environment:
     name: production
-
