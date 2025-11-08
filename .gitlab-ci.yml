@@ -81,6 +81,7 @@ deploy_to_prod:
     - echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
     - chmod 600 private_key.pem
     - mkdir -p ~/.ssh
+    - if [ -z "$APP_SERVER_PROD_IP" ]; then echo "❌ APP_SERVER_PROD_IP not set"; exit 1; fi
     - ssh-keyscan -H $APP_SERVER_PROD_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying to PRODUCTION using same image tag - $DEPLOYED_IMAGE_TAG"
