@@ -4,6 +4,13 @@ stages:
   - deploy_staging
   - deploy_production
 
+# ДОБАВИТЬ WORKFLOW
+workflow:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "uat"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
@@ -52,12 +59,6 @@ deploy_to_staging:
   script:
     - echo "Deploying to STAGING..."
     - ansible-playbook playbooks/deploy_service.yml -i "$APP_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=$CI_COMMIT_REF_NAME"
-    # Создаем файл с переменными для production
-    - echo "DEPLOYED_IMAGE_TAG=$CI_COMMIT_REF_NAME" > deploy.env
-  artifacts:
-    expire_in: 3 days
-    reports:
-      dotenv: deploy.env
   needs:
     - build_image
   rules:
@@ -75,10 +76,10 @@ deploy_to_prod:
     - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
   script:
     - echo "Deploying to PRODUCTION using image from UAT..."
-    # Используем фиксированный тег uat - образ уже собран и протестирован
     - ansible-playbook playbooks/deploy_service.yml -i "$PROD_SERVER_IP," -u ubuntu --private-key private_key.pem --extra-vars "service_name=skillbox-app docker_image=$DOCKER_IMAGE image_tag=uat"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-  when: manual
+      when: manual
   environment:
     name: production
+
