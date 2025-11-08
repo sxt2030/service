@@ -4,13 +4,18 @@ After=docker.service
 Requires=docker.service
 
 [Service]
+Type=simple
 Restart=always
+RestartSec=10
+
 ExecStartPre=-/usr/bin/docker stop {{ service_name }}
 ExecStartPre=-/usr/bin/docker rm {{ service_name }}
-ExecStartPre=/usr/bin/docker pull {{ image_name }}:{{ image_tag }}
-ExecStart=/usr/bin/docker run -d --name {{ service_name }} -p 80:8080 {{ image_name }}:{{ image_tag }}
+ExecStartPre=/usr/bin/docker pull {{ docker_image }}:{{ image_tag }}
+
+# БЕЗ -d для Type=simple
+ExecStart=/usr/bin/docker run --rm --name {{ service_name }} -p 8080:8080 {{ docker_image }}:{{ image_tag }}
+
 ExecStop=/usr/bin/docker stop {{ service_name }}
 
 [Install]
 WantedBy=multi-user.target
-
