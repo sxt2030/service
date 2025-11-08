@@ -13,7 +13,7 @@ ExecStartPre=-/usr/bin/docker rm {{ service_name }}
 ExecStartPre=/usr/bin/docker pull {{ docker_image }}:{{ image_tag }}
 
 # БЕЗ -d для Type=simple
-ExecStart=/usr/bin/docker run --rm --name {{ service_name }} -p 8080:8080 {{ docker_image }}:{{ image_tag }}
+ExecStart=/usr/bin/docker run --rm --name {{ service_name }} -p 80:8080 {{ docker_image }}:{{ image_tag }}
 
 ExecStop=/usr/bin/docker stop {{ service_name }}
 
