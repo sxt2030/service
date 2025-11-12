@@ -1,0 +1,49 @@
+---
+- name: Install and configure Docker on app servers
+  hosts: app_servers
+  become: yes
+  vars:
+    docker_packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - docker.io
+
+  tasks:
+    - name: Update APT cache
+      apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Add current user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Configure Docker daemon (optional tuning)
+      template:
+        src: ../templates/docker_daemon.json.j2
+        dest: /etc/docker/daemon.json
+        mode: '0644'
+      notify:
+        - restart docker
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+
